@@ -1,4 +1,4 @@
-outp <- readLines("~/Desktop/GitHub/cometsUtil/biomass.txt")
+outp <- readLines("~/Desktop/GitHub/cometsUtil/Data/biomass.txt")
 sapply(outp[1:2], split, "_")
 grep(x = outp[1:2], pattern =  "_*_")
 
@@ -41,3 +41,6 @@ for(i in 1:length(spatdat)){
 plot(sapply(bmat, function(x) max(apply(x, 2, function(y) sum(y > 0))))~sapply(spatdat, function(x) sum(x[,3])))
 
 ggplot(as.data.frame(spatdat[[200]]), aes(x = x, y = y, fill = biomass)) + geom_tile()
+
+outp2 <- read.table("~/Desktop/GitHub/cometsUtil/Data/total_biomass3spp.txt", sep = "\t", col.names = c("Time", "Sp1", "Sp2", "Sp3"))
+matplot(outp2[,-1], typ = "l", lwd = 5)
