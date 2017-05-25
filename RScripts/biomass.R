@@ -44,3 +44,24 @@ ggplot(as.data.frame(spatdat[[200]]), aes(x = x, y = y, fill = biomass)) + geom_
 
 outp2 <- read.table("~/Desktop/GitHub/cometsUtil/Data/total_biomass3spp.txt", sep = "\t", col.names = c("Time", "Sp1", "Sp2", "Sp3"))
 matplot(outp2[,-1], typ = "l", lwd = 5)
+
+
+sp1A <- read.table("~/Desktop/ecoli_test/total_biomass_log1s_20170502105131.txt")
+sp1B <- read.table("~/Desktop/ecoli_test/total_biomass_log1s2_20170502113309.txt")
+sp1C <- read.table("~/Desktop/ecoli_test/total_biomass_log1s3_20170502115659.txt")
+
+plot(sp1A[1:3,2], ylim = c(0, max(sp1A[,2])))
+points(sp1B[1:3,3])
+points(sp1C[1:3,4])
+
+
+sp2AB <- read.table("~/Desktop/ecoli_test/total_biomass_log2sAB_20170502123408.txt")
+sp2AC <- read.table("~/Desktop/ecoli_test/total_biomass_log2sAC_20170502132146.txt")
+sp2BC <- read.table("~/Desktop/ecoli_test/total_biomass_log2sBC_20170502135148.txt")
+
+matplot(sp2AB[,c(2,3)], typ = "l")
+matplot(sp2AC[,c(2,4)], typ = "l")
+matplot(sp2BC[,c(3,4)], typ = "l")
+
+sp3 <- read.table("~/Desktop/ecoli_test/three/total_biomass")
+matplot(sp3[1:500,-1], typ = "l", lwd = 5)
