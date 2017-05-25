@@ -1,2 +1,2 @@
-# cometsUtil
-Utility functions for analyzing output of COMETS modeling software
+# MetabolicMicrobe
+Functions associated with metabolic modeling of microbial communities
