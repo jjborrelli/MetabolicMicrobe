@@ -93,3 +93,5 @@ g2 <- frame2webs(data.frame(higher = g[[1]][,3], lower = g[[1]][,1], webID = 1, 
 plotweb(g1)
 plotweb(g2)
 plotweb2(g1, g2)
+
+plot(graph.adjacency(get.adjacency(g[[2]], sparse = F), weighted = T), edge.width = E(graph.adjacency(get.adjacency(g[[2]], sparse = F), weighted = T))$weight, edge.arrow.size = 1)
