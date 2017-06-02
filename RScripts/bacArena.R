@@ -49,6 +49,27 @@ par(mfrow= c(5,2))
 evalArena(eval, show_legend = F, time = 1:10)
 
 
+grw <- function(t, N, parms){
+  with(as.list(parms), { # extract parameters from parms vector
+    dN = N * R * (1 - N/K)
+    return(list(dN)) # return dn/dt as a list
+  })
+}
+
+ode(c(N = 10), times = 1:10, func = grw, parms = list(R = 1.1, K = 100))
+
+grwMin = function(parms, nTrue){
+  n0 <- nTrue[1]
+  times <- 1:length(nTrue)
+  out = as.data.frame(lsoda(n0, times, grw, parms)) # run ode
+  mse = mean((out$`1`-nTrue)^2) # calculate mean squared error between simulated and original data
+  return(mse) # return mean squared error
+}
+
+n2 <- sapply(eval@simlist, nrow)
+optout2 <- optim(par = list(R = 1.4, K = 400), fn = grwMin, nTrue = n2)
+
+
 ####
 # Multiple Organisms
 ####
@@ -72,6 +93,8 @@ eval <- simEnv(arena, time = 10)
 # Plotting results
 par(mfrow = c(2,1))
 plotCurves2(eval, legendpos = "topleft")
+
+
 
 
 ####
