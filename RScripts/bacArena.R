@@ -56,7 +56,15 @@ grw <- function(t, N, parms){
   })
 }
 
-ode(c(N = 10), times = 1:10, func = grw, parms = list(R = 1.1, K = 100))
+grw2 <- function(t, N, parms){
+  parms <- as.list(parms)
+  for(i in 2:t){
+    N[i] <- round(N[i-1] * parms$R * (1 - N[i-1]/parms$K))
+  }
+  return(N)
+}
+
+ode(c(N = 10), times = 1:10, func = grw, parms = list(R = .8, K = 400))
 
 grwMin = function(parms, nTrue){
   n0 <- nTrue[1]
@@ -66,8 +74,20 @@ grwMin = function(parms, nTrue){
   return(mse) # return mean squared error
 }
 
-n2 <- sapply(eval@simlist, nrow)
-optout2 <- optim(par = list(R = 1.4, K = 400), fn = grwMin, nTrue = n2)
+grwMin2 <- function(parms, nTrue){
+  n0 <- nTrue[1]
+  times <- length(nTrue)
+  parms <- append(parms, c(K = 900))
+  out <- grw2(times, n0, parms)
+  mse <- mean((out-nTrue)^2)
+  return(mse)
+}
+
+n <- sapply(eval@simlist, nrow)
+optout2 <- optim(par = list(R = 1.4), fn = grwMin2, nTrue = n)
+
+plot(ode(c(N = 20), times = 1:20, func = grw, parms = optout2$par)[,-1], typ= "o")
+plot(grw2(200, 20, list(R = 4, K = 500)), typ = "l")
 
 
 ####
@@ -88,7 +108,7 @@ arena <- addSubs(arena, smax = 0.5, mediac = "EX_glc(e)", unit = "mM")
 arena
 
 # Simulate
-eval <- simEnv(arena, time = 10)
+eval <- simEnv(arena, time = 20)
 
 # Plotting results
 par(mfrow = c(2,1))
