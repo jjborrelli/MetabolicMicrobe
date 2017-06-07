@@ -42,7 +42,7 @@ getSubHist(eval, "EX_glc(e)")
 
 # Growth curve with substance variations
 par(mfrow = c(2,1))
-plotCurves2(eval, legendpos = "topleft")
+plotCurves2(eval, legendpos = "topleft")[2]
 
 # Spatio-temporal changes
 par(mfrow= c(5,2))
@@ -64,7 +64,17 @@ grw2 <- function(t, N, parms){
   return(N)
 }
 
-ode(c(N = 10), times = 1:10, func = grw, parms = list(R = .8, K = 400))
+grw3 <- function(t, N, parms){
+  with(as.list(parms), { # extract parameters from parms vector
+    dN = N * R[ceiling(t)] * (1 - N/K)
+    return(list(dN)) # return dn/dt as a list
+  })
+}
+
+
+plot(ode(c(N = 20), times = 1:10, func = grw, parms = list(R = .3, K = 400))[,-1])
+
+
 
 grwMin = function(parms, nTrue){
   n0 <- nTrue[1]
@@ -84,11 +94,24 @@ grwMin2 <- function(parms, nTrue){
 }
 
 n <- sapply(eval@simlist, nrow)
-optout2 <- optim(par = list(R = 1.4), fn = grwMin2, nTrue = n)
+optout2 <- optim(par = list(R = 1.4, K = 400), fn = grwMin, nTrue = n)
 
-plot(ode(c(N = 20), times = 1:20, func = grw, parms = optout2$par)[,-1], typ= "o")
+plot(ode(c(N = 20), times = 1:13, func = grw, parms = optout2$par)[,-1], typ= "o")
+points(n, typ = "o", pch = 20)
 plot(grw2(200, 20, list(R = 4, K = 500)), typ = "l")
 
+pts <- matrix(nrow = 13, ncol = 2000)
+for(i in 1:1000){
+  pts[,i] <- (ode(c(N = 20), times = 1:13, func = grw3, parms = list(R = rnorm(15, .7768, .2), K = 400))[,-1])
+  print(i)
+}
+matplot(pts, typ = "l", col = "gray", lty = 1)
+points(n, typ = "o", col = "blue")
+
+Rs <- rnorm(15, .7768, .1)
+n1 <- (ode(c(N = 20), times = 1:13, func = grw3, parms = list(R = Rs, K = 400))[,-1])
+plot(n1)
+optout2 <- optim(par = list(R = 1.4, K = 400), fn = grwMin, nTrue = n1)
 
 ####
 # Multiple Organisms
@@ -112,9 +135,55 @@ eval <- simEnv(arena, time = 20)
 
 # Plotting results
 par(mfrow = c(2,1))
-plotCurves2(eval, legendpos = "topleft")
+plotCurves2(eval, legendpos = "topleft")[2]
 
 
+grwMin1 = function(parms, nTrue, K){
+  n0 <- nTrue[1]
+  parms <- list(R = parms, K = K)
+  times <- 1:length(nTrue)
+  out = as.data.frame(lsoda(n0, times, grw, parms)) # run ode
+  mse = mean((out$`1`-nTrue)^2) # calculate mean squared error between simulated and original data
+  return(mse) # return mean squared error
+}
+
+wboth <- t(sapply(eval@simlist, function(x) as.vector(table(x$type))))
+n.aux <- sapply(eval@simlist, nrow)
+n.aux2 <- wboth[,2]
+opt_aux <- optim(par = list(R = 1.4), fn = grwMin1, nTrue = n.aux, K = 900)
+opt_aux2 <- optim(par = list(R = 1.4), fn = grwMin1, nTrue = n.aux2, K = 900)
+n1 <- (ode(c(N = 20), times = 1:20, func = grw, parms = list(R = opt_aux$par[1], K = 900))[,-1])
+n1.2 <- (ode(c(N = 20), times = 1:20, func = grw, parms = list(R = opt_aux2$par[1], K = 900))[,-1])
+
+n.wt <- sapply(eval@simlist, nrow)
+n.wt2 <- wboth[,1]
+opt_wt <- optim(par = list(R = 1.4), fn = grwMin, nTrue = n.wt, K = 900)
+opt_wt2 <- optim(par = list(R = 1.4), fn = grwMin, nTrue = n.wt2, K = 900)
+n2 <- (ode(c(N = 20), times = 1:20, func = grw, parms = list(R = opt_wt2$par[1], K = 900))[,-1])
+n2.2 <- (ode(c(N = 20), times = 1:20, func = grw, parms = list(R = opt_wt$par[1], K = 900))[,-1])
+
+
+dgr.aux <- opt_aux2[[1]]-opt_aux[[1]]/opt_aux[[1]]
+dgr.wt <- opt_wt2[[1]]-opt_wt[[1]]/opt_wt[[1]]
+
+intMin <- function(parms, nTrue, K, R){
+  n0 <- nTrue[1,]
+  parms <- list(R = R, K = K, m = matrix(c(0, parms[1], parms[2], 0), 2, 2))
+  times <- 1:length(nTrue)
+  out = as.data.frame(lsoda(n0, times, lvm, parms)) # run ode
+  mse = mean((out-nTrue)^2) # calculate mean squared error between simulated and original data
+}
+
+lvm <- function(t, N, parms){
+  with(as.list(parms), { # extract parameters from parms vector
+    dN = N * R * (1 - N/K) + m %*% N * N
+    return(list(dN)) # return dn/dt as a list
+  })
+}
+
+opt.both <- optim(par = c(a1 = -.8, a2 = -.3), fn = intMin, nTrue = wboth, K = c(900, 900), R = c(.775, .372))
+out1 <- lsoda(c(20,20), 1:20, lvm, parms = list(R = c(.775, .372), K = 900, m = matrix(c(0, opt.both$par[1], opt.both$par[2], 0), 2,2)))[,-1]
+matplot(out1, typ = "l")
 
 
 ####
