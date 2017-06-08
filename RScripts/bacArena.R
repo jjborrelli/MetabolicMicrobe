@@ -42,12 +42,13 @@ getSubHist(eval, "EX_glc(e)")
 
 # Growth curve with substance variations
 par(mfrow = c(2,1))
-plotCurves2(eval, legendpos = "topleft")[2]
+plotCurves2(eval, legendpos = "topleft")
 
 # Spatio-temporal changes
 par(mfrow= c(5,2))
 evalArena(eval, show_legend = F, time = 1:10)
 
+eval@simlist[[2]]
 
 grw <- function(t, N, parms){
   with(as.list(parms), { # extract parameters from parms vector
@@ -57,12 +58,12 @@ grw <- function(t, N, parms){
 }
 
 grw2 <- function(t, N, parms){
-  parms <- as.list(parms)
-  for(i in 2:t){
-    N[i] <- round(N[i-1] * parms$R * (1 - N[i-1]/parms$K))
-  }
-  return(N)
+  with(as.list(parms), { # extract parameters from parms vector
+    dN = R * N * (K - N - A * N[c(2,1)]) / K
+    return(list(dN)) # return dn/dt as a list
+  })
 }
+
 
 grw3 <- function(t, N, parms){
   with(as.list(parms), { # extract parameters from parms vector
@@ -93,7 +94,7 @@ grwMin2 <- function(parms, nTrue){
   return(mse)
 }
 
-n <- sapply(eval@simlist, nrow)
+n <- t(sapply(eval@simlist, function(x) as.vector(table(x$type))))
 optout2 <- optim(par = list(R = 1.4, K = 400), fn = grwMin, nTrue = n)
 
 plot(ode(c(N = 20), times = 1:13, func = grw, parms = optout2$par)[,-1], typ= "o")
@@ -131,7 +132,7 @@ arena <- addSubs(arena, smax = 0.5, mediac = "EX_glc(e)", unit = "mM")
 arena
 
 # Simulate
-eval <- simEnv(arena, time = 20)
+eval <- simEnv(arena, time = 15)
 
 # Plotting results
 par(mfrow = c(2,1))
@@ -168,9 +169,9 @@ dgr.wt <- opt_wt2[[1]]-opt_wt[[1]]/opt_wt[[1]]
 
 intMin <- function(parms, nTrue, K, R){
   n0 <- nTrue[1,]
-  parms <- list(R = R, K = K, m = matrix(c(0, parms[1], parms[2], 0), 2, 2))
+  parms <- list(R = R, K = K, A = parms)
   times <- 1:length(nTrue)
-  out = as.data.frame(lsoda(n0, times, lvm, parms)) # run ode
+  out = as.data.frame(lsoda(n0, times, grw2, parms)) # run ode
   mse = mean((out-nTrue)^2) # calculate mean squared error between simulated and original data
 }
 
@@ -181,11 +182,22 @@ lvm <- function(t, N, parms){
   })
 }
 
-opt.both <- optim(par = c(a1 = -.8, a2 = -.3), fn = intMin, nTrue = wboth, K = c(900, 900), R = c(.775, .372))
-out1 <- lsoda(c(20,20), 1:20, lvm, parms = list(R = c(.775, .372), K = 900, m = matrix(c(0, opt.both$par[1], opt.both$par[2], 0), 2,2)))[,-1]
+lvm2 <- function(t, N, parms){
+  with(as.list(parms), { # extract parameters from parms vector
+    dN <- c(0,0)
+    dN[1] = N[1] * R[1] * (K[1] - N[1] - A[1]*N[2]) / K[1]
+    dN[2] = N[2] * R[2] * (K[2] - N[2] - A[2]*N[1]) / K[2]
+    return(list(dN)) # return dn/dt as a list
+  })
+}
+
+opt.both <- optim(par = c(A = c(.8,.3)), fn = intMin, nTrue = wboth, K = c(900, 900), R = c(.775, .372))
+out1 <- lsoda(c(20,20), 1:20, grw2, parms = list(R = c(.775, .372), K = c(900,900), A = opt.both$par))[,-1]
 matplot(out1, typ = "l")
-
-
+points(n[,1])
+points(n[,2])
+lines(1:16, out1[1:16,1],col = "red", lty = 2)
+lines(1:16, out1[1:16,2],col = "blue", lty = 2)
 ####
 # Communities
 ####
