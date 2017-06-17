@@ -1,0 +1,20 @@
+library(sybil)
+library(sybilSBML)
+library(BacArena)
+
+test <- readSBMLmod("C:/Users/jjborrelli/Downloads/Clostridium_difficile_NAP07.xml")
+data("Ec_core")
+cdif <- Bac(test)
+ecoli <- Bac(Ec_core)
+
+arena <- Arena(n=20, m=20)
+arena <- addOrg(arena,ecoli,amount=20)
+arena <- addDefaultMed(arena, ecoli)
+arena <- addSubs(arena, smax=0.5, mediac="EX_glc(e)", unit="mM")
+
+eval <- simEnv(arena,time=12)
+par(mfrow=c(1,2))
+plotCurves2(eval, legendpos = "bottomright")
+par(mfrow=c(1,1))
+sum(eval@simlist[[12]]$biomass)
+sapply(eval@simlist, function(x) sum(x$biomass)) %>% plot(typ = "l")
