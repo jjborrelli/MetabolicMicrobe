@@ -191,7 +191,7 @@ lvm2 <- function(t, N, parms){
   })
 }
 
-opt.both <- optim(par = c(A = c(.8,.3)), fn = intMin, nTrue = wboth, K = c(900, 900), R = c(.775, .372))
+opt.both <- optim(par = c(A = c(.8,.3)), fn = intMin, nTrue = b.1_2, K = c(900, 900), R = c(.775, .372))
 out1 <- lsoda(c(20,20), 1:20, grw2, parms = list(R = c(.775, .372), K = c(900,900), A = opt.both$par))[,-1]
 matplot(out1, typ = "l")
 points(n[,1])
