@@ -63,7 +63,7 @@ pair_sim <- function(mods, subs, iter = 100, size = 20, init = 10, t = 12, cores
   t0 <- Sys.time()
   simlist <- parLapply(cl, 1:iter, function(x){
     b1 <- BacArena::Bac(mods[[1]])
-    b1 <- BacArena::Bac(mods[[2]])
+    b2 <- BacArena::Bac(mods[[2]])
     arena <- BacArena::Arena(n = size, m = size)
     arena <- BacArena::addOrg(arena, b1, amount = init)
     arena <- BacArena::addOrg(arena, b2, amount = init)
@@ -164,8 +164,67 @@ for(i in 1:773){
 
 hist(sapply(rlist, mean))
 
-b1 <- readSBMLmod(fnames[10])
+b1 <- readSBMLmod(fnames[1])
 b2 <- readSBMLmod(fnames[100])
 
 simb1 <- single_sim(mod = b1, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
 simb2 <- single_sim(mod = b2, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
+
+p <- plotGrowthCurve(simb1)
+p[[2]]
+
+psim <- pair_sim(list(b1, b2), subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
+
+p <- plotGrowthCurve(psim)
+p[[2]]
+
+n1 <- sapply(psim[[1]]@simlist, function(x) table(x$type))
+rb1 <- mean(single_R(simb1)$r)
+optimize(grwMin, interval = c(-3,3), nTrue = n1[1,])$minimum
+rb2 <- mean(single_R(simb2)$r)
+optimize(grwMin, interval = c(-3,3), nTrue = n1[2,])$minimum
+
+
+
+pair_int <- function(t, state, parms){
+  with(as.list(state, parms), { # extract parameters from parms vector
+    dN1 = N1 * parms$r1 * (1 - N1/400) + parms$a21 * N2
+    dN2 = N2 * parms$r2 * (1 - N2/400) + parms$a12 * N1
+    return(list(c(dN1, dN2))) # return dn/dt as a list
+  })
+}
+
+lvcomp = function(t, state, parms) {
+  with(as.list(state, parms), { # extract parameters from parms vector
+    
+    dN1 = parms$r1*N1*(parms$K1-N1-parms$a1*N2)/parms$K1 # species 1
+    dN2 = parms$r2*N2*(parms$K2-N2-parms$a2*N1)/parms$K2 # species 2
+    
+    return(list(c(dN1, dN2))) # return dn/dt as a list
+  })
+}
+
+prMin = function(parms, growth, nTrue){
+  n0 <- c(nTrue[1,1], nTrue[2,1])
+  names(n0) <- c("N1", "N2")
+  times <- 1:ncol(nTrue)
+  parms <- append(growth, parms)
+  out <- as.data.frame(lsoda(n0, times = times, func = lvcomp, parms = parms)) # run ode
+  mse <- sum((out$N1-nTrue[1,])^2)+sum((out$N2 - nTrue[2,])^2) # calculate mean squared error between simulated and original data
+  return(mse) # return mean squared error
+}
+
+optpar <- optim(par = list(a21 = -.2, a12 = -.2), fn = prMin, growth = list(r1 = rb1, r2 = rb2, K1 = 400, K2 = 400), nTrue = n1)
+optpar
+optpar$par
+
+pl <- list(r1 = rb1, r2 = rb2, a21 = optpar$par[1], a12 = optpar$par[2], K1 = 400, K2 = 400)
+n0 <- c(nTrue[1,1], nTrue[2,1])
+names(n0) <- c("N1", "N2")
+times <- 1:ncol(nTrue)
+out <- as.data.frame(ode(n0, times = times, func = lvcomp, parms = pl))
+out
+
+matplot(out[,-1], typ = "l", ylim = c(0,400))
+points(n1[1,])
+points(n1[2,])
