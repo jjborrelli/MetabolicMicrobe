@@ -29,7 +29,6 @@ grwMin_sse = function(parms, nTrue){
   return(mse) # return sum of squared error
 }
 
-# try fitting model with nls???
 
 
 # Simulation function (parallel)
@@ -54,6 +53,31 @@ single_sim <- function(mod, subs, iter = 100, size = 20, init = 10, t = 12, core
   
   return(simlist)
 }
+
+
+pair_sim <- function(mods, subs, iter = 100, size = 20, init = 10, t = 12, cores = 1){
+  
+  cl <- makeCluster(cores)
+  clusterExport(cl, varlist = c("mods", "size", "init", "t", "subs"), envir = environment())
+  
+  t0 <- Sys.time()
+  simlist <- parLapply(cl, 1:iter, function(x){
+    b1 <- BacArena::Bac(mods[[1]])
+    b1 <- BacArena::Bac(mods[[2]])
+    arena <- BacArena::Arena(n = size, m = size)
+    arena <- BacArena::addOrg(arena, b1, amount = init)
+    arena <- BacArena::addOrg(arena, b2, amount = init)
+    arena <- BacArena::addSubs(arena, smax = subs$concentration.im.mM, 
+                               mediac = subs$Exchange, difspeed = subs$diffconstant, addAnyway = TRUE)
+    sim <- BacArena::simEnv(arena, time = t)
+  })
+  stopCluster(cl)
+  t1 <- Sys.time()
+  print(t1-t0)
+  
+  return(simlist)
+}
+
 
 
 # get fitted growth rate parameter
@@ -88,7 +112,7 @@ pred_plots <- function(simlst){
 # Testing
 
 ## fake data
-sdat <- ode(10, times = 1:13, func = grw, parms = .8)[,-1]
+sdat <- ode(10, times = 1:13, func = grw, parms = 1.9)[,-1]
 ## add noise
 smat <- matrix(0, nrow = 13, ncol = 100)
 for(i in 1:100){
@@ -127,4 +151,21 @@ for(i in seq_along(fnames)){
   saveRDS(params.lst, paste0(datapath, "parlst_", i, "_", Sys.Date()))
 }
 t1 <- Sys.time()
-t1=t0
+t1-t0
+
+
+simres <- list.files("D:/MetabolicMicrobe/SingleMicrobeSimulations/sim_4-16-2018/")
+res1 <- grep("parlst", simres)
+rlist <- list()
+for(i in 1:773){
+  plist <- readRDS(paste0("D:/MetabolicMicrobe/SingleMicrobeSimulations/sim_4-16-2018/",simres[res1[i]]))
+  rlist[[i]] <- plist$r
+}
+
+hist(sapply(rlist, mean))
+
+b1 <- readSBMLmod(fnames[10])
+b2 <- readSBMLmod(fnames[100])
+
+simb1 <- single_sim(mod = b1, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
+simb2 <- single_sim(mod = b2, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
