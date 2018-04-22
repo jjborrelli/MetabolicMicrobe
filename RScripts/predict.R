@@ -198,20 +198,20 @@ hist(sapply(rlist, mean))
 b1 <- readSBMLmod(fnames[1])
 b2 <- readSBMLmod(fnames[3])
 
-simb1 <- single_sim(mod = b1, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
-simb2 <- single_sim(mod = b2, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
+simb1.1 <- single_sim(mod = b1, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore, stir = TRUE)
+simb2.1 <- single_sim(mod = b2, subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore, stir = TRUE)
 
-p <- plotGrowthCurve(simb1)
+p <- plotGrowthCurve(simb1.1)
 p[[2]]
-p <- plotGrowthCurve(simb2)
-p[[2]]
+p2 <- plotGrowthCurve(simb2.1)
+p2[[2]]
 
-psim <- pair_sim(list(b1, b2), subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore)
+psimF <- pair_sim(list(b1, b2), subs = submat, iter = 7, size = 20, init = 10, t = 12, cores = ncore, stir = FALSE)
 
 p <- plotGrowthCurve(psim)
 p[[2]]
 
-n1 <- sapply(psim[[1]]@simlist, function(x) c(sum(x$type == 1), sum(x$type == 2)))
+n1 <- sapply(psimF[[1]]@simlist, function(x) c(sum(x$type == 1), sum(x$type == 2)))
 rb1 <- mean(single_R(simb1)$r)
 optimize(grwMin, interval = c(-3,3), nTrue = n1[1,])$minimum
 rb2 <- mean(single_R(simb2)$r)
